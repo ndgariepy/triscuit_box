@@ -31,23 +31,32 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func signupPage(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "POST" {
+	if r.Method != "POST" {
 		fmt.Fprint(w, SignupPageHtml)
 	} else {
+		username := r.FormValue("userid")
+		email := r.FormValue("email")
+		pwd := r.FormValue("password")
 		connectionName := os.Getenv("CLOUDSQL_CONNECTION_NAME")
 		user := os.Getenv("CLOUDSQL_USER")
 		password := os.Getenv("CLOUDSQL_PASSWORD")
 		db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@cloudsql(%s)/", user, password, connectionName))
+		_, err = db.Exec("INSERT INTO triskitbox.Users (suserid, semailaddr, spasswd) VALUES (?, ?, ?)", username, email, pwd)
+		http.Redirect(w, r, "/", 301)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Could not open db: %v", err), 500)
 			return
 		}
-		rows, err := db.Query("SHOW DATABASES")
+		rows, err := db.Query("SELECT COUNT(*) FROM triskitbox.Users;")
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Could not query db: %v", err), 500)
 			return
 		}
-		fmt.Fprint(w, rows)
+		for rows.Next() {
+			var count int
+			err = rows.Scan(&count)
+			fmt.Fprint(w, count)
+		}
 	}
 }
 
